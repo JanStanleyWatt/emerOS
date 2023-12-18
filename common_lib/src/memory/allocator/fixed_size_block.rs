@@ -1,11 +1,11 @@
-use crate::memory::allocator::Locked;
+use crate::locked::Locked;
 use core::{
     alloc::{GlobalAlloc, Layout},
     mem,
     ptr::{self, NonNull},
 };
 
-use common_lib::allocator::Allocator;
+use crate::memory::allocator::Allocator;
 
 /// 次のノードへの参照を持つ、片方向連結リストのノードとなる構造体
 ///

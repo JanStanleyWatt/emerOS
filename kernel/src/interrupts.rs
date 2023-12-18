@@ -1,7 +1,8 @@
-use amd64_lib::interrupt::{gdt, idt};
-
+/// 割り込みなどの初期化
+#[cfg(target_arch = "x86_64")]
 pub(crate) fn init() {
-    // 割り込み初期化
+    use amd64_lib::interrupt::{gdt, idt};
+
     gdt::init();
     idt::init();
 }

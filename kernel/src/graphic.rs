@@ -1,6 +1,6 @@
 use alloc::boxed::Box;
-use amd64_lib::memory::allocator::Locked;
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo};
+use common_lib::locked::Locked;
 use once_cell::race::OnceBox;
 
 static FRONT_FRAME_BUFFER: OnceBox<FrontFrameBuffer> = OnceBox::new();

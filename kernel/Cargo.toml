@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bootloader_api = { workspace = true }
-amd64_lib = { path = "../amd64_lib" }
-spin = { workspace = true }
 once_cell = { workspace = true, features = ["race", "alloc"] }
+
+amd64_lib = { path = "../amd64_lib" }
+common_lib = { path = "../common_lib" }
