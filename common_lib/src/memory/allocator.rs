@@ -1,3 +1,5 @@
+pub mod fixed_size_block;
+
 /// アロケータ共通の初期化操作を定義するトレイト
 pub trait Allocator {
     /// アロケータを引数で与えられたヒープ境界で初期化する

@@ -1,3 +1,5 @@
 #![no_std]
+#![feature(const_mut_refs)]
 
-pub mod allocator;
+pub mod locked;
+pub mod memory;

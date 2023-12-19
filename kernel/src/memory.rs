@@ -1,11 +1,9 @@
 use bootloader_api::info::{MemoryRegions, Optional};
 use core::cell::OnceCell;
 
-use amd64_lib::memory::{
-    self,
-    allocator::{fixed_size_block::FixedSizeBlockAllocator, Locked},
-    heap::{self, Heap},
-    paging::BootInfoFrameAllocator,
+use common_lib::{
+    locked::Locked,
+    memory::{allocator::fixed_size_block::FixedSizeBlockAllocator, heap::Heap},
 };
 
 const HEAP_START: usize = 0x_4444_4444_0000;
@@ -21,7 +19,14 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 }
 
 /// メモリ管理機能の初期化
+#[cfg(target_arch = "x86_64")]
 pub(crate) fn init(physical_memory_offset: Optional<u64>, memory_regions: &'static MemoryRegions) {
+    use amd64_lib::memory::{
+        self,
+        heap::{self},
+        paging::BootInfoFrameAllocator,
+    };
+
     // まずは物理メモリのオフセットを取り出す
     let physical_memory_offset = match physical_memory_offset {
         Optional::Some(addr) => addr,

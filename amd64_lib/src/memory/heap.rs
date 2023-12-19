@@ -1,39 +1,10 @@
+use common_lib::memory::{allocator::Allocator, heap::Heap};
 use x86_64::{
     structures::paging::{
         mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
     },
     VirtAddr,
 };
-
-use super::allocator::Locked;
-
-use common_lib::allocator::Allocator;
-
-/// ヒープ領域を管理する構造体
-pub struct Heap<A: Allocator + 'static> {
-    start: usize,
-    size: usize,
-    allocator: &'static Locked<A>,
-}
-
-impl<A> Heap<A>
-where
-    A: Allocator + 'static,
-{
-    /// ヒープ領域の初期化の下準備として、それを定義する構造体を作成する関数
-    ///
-    /// ## Safety
-    /// 呼び出し元は以下の点を保証しなければならない:
-    /// - 与えるヒープ境界が有効であり、なおかつメモリとして未使用であること
-    #[inline(always)]
-    pub const unsafe fn new(start: usize, size: usize, allocator: &'static Locked<A>) -> Self {
-        Heap {
-            start,
-            size,
-            allocator,
-        }
-    }
-}
 
 /// ヒープ領域の初期化を行う。このとき、アロケータの初期化も同時に行う
 ///

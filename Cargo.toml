@@ -42,9 +42,6 @@ ovmf-prebuilt = "0.1.0-alpha"
 [workspace.dependencies]
 acpi = "5.0.0"
 bootloader_api = "0.11.4"
-lazy_static = "1.4.0"
 once_cell = { version = "1.19.0", default-features = false }
 spin = "0.9.8"
-linked_list_allocator = "0.10.5"
 uart_16550 = "0.3.0"
-x86_64 = "0.14.11"
