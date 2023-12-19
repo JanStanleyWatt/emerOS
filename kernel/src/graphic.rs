@@ -1,3 +1,7 @@
+pub(crate) mod color;
+pub(crate) mod console;
+pub(crate) mod text_buffer;
+
 use alloc::boxed::Box;
 use bootloader_api::info::{FrameBuffer, FrameBufferInfo};
 use common_lib::locked::Locked;
@@ -17,21 +21,17 @@ pub(crate) fn init(frame_buffer: &'static mut FrameBuffer) {
         })
     });
 
-    // 動作確認（そう遠くないうちに黒に画面を塗りつぶす処理に変更する）
-    let info = FRONT_FRAME_BUFFER.get().unwrap().info;
-    let height = info.height;
-    let width = info.stride;
-    let pixel = info.bytes_per_pixel;
-    let color = [255u8, 255, 255];
+    // Lock
     {
-        let mut buf = FRONT_FRAME_BUFFER.get().unwrap().frame_buffer.lock();
-        for y in 0..height {
-            for x in 0..width {
-                let index = (y * width + x) * pixel;
-                buf[index..index + 3].copy_from_slice(&color);
-            }
-        }
-    }
+        FRONT_FRAME_BUFFER
+            .get()
+            .unwrap()
+            .frame_buffer
+            .lock()
+            .fill(0);
+    } // Unlock
+
+    console::init();
 }
 
 struct FrontFrameBuffer {

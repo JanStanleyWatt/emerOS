@@ -7,7 +7,7 @@ use common_lib::{
 };
 
 const HEAP_START: usize = 0x_4444_4444_0000;
-const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
+const HEAP_SIZE: usize = 32000 * 1024; // 32 MiB
 
 // 固定サイズブロックアロケータを使う
 #[global_allocator]
