@@ -11,3 +11,5 @@ once_cell = { workspace = true, features = ["race", "alloc"] }
 
 amd64_lib = { path = "../amd64_lib" }
 common_lib = { path = "../common_lib" }
+
+ab_glyph = { version = "0.2.23", features = ["libm"], default-features = false }
