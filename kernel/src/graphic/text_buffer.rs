@@ -3,20 +3,30 @@ use ab_glyph::{point, Font, FontRef, Glyph};
 use super::{color::Color, FRONT_FRAME_BUFFER};
 
 pub struct TextBuffer<'a> {
-    font: FontRef<'a>,
+    font_text: FontRef<'a>,
+    font_bold: FontRef<'a>,
+    scale: f32,
 }
 
 impl<'a> TextBuffer<'a> {
-    pub const fn new(font: FontRef<'a>) -> Self {
-        TextBuffer { font }
+    pub const fn new(font_text: FontRef<'a>, font_bold: FontRef<'a>, scale: f32) -> Self {
+        TextBuffer {
+            font_text,
+            font_bold,
+            scale,
+        }
     }
 
-    pub fn write_char(&self, character: char, scale: f32, color: Color, x: f32, y: f32) {
-        let q_glyph: Glyph = self
-            .font
+    pub fn write_char(&self, character: char, font_type: FontType, color: Color, x: f32, y: f32) {
+        let font = match font_type {
+            FontType::Text => &self.font_text,
+            FontType::Bold => &self.font_bold,
+        };
+
+        let q_glyph: Glyph = font
             .glyph_id(character)
-            .with_scale_and_position(scale, point(x, y));
-        if let Some(q) = self.font.outline_glyph(q_glyph) {
+            .with_scale_and_position(self.scale, point(x, y));
+        if let Some(q) = font.outline_glyph(q_glyph) {
             let info = FRONT_FRAME_BUFFER.get().unwrap().info;
             let min_x = q.px_bounds().min.x as u32;
             let min_y = q.px_bounds().min.y as u32;
@@ -40,4 +50,9 @@ impl<'a> TextBuffer<'a> {
             });
         }
     }
+}
+
+pub enum FontType {
+    Text,
+    Bold,
 }
