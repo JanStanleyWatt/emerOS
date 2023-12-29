@@ -8,11 +8,11 @@ use alloc::boxed::Box;
 use bootloader_api::info::FrameBuffer;
 use common_lib::locked::Locked;
 
-use crate::{graphic::text_buffer::TextBuffer, FRAME_BUFFER, FRAME_BUFFER_INFO, TEXT_BUFFER};
+use self::text_buffer::{TextBuffer, TextBufferInfo};
+use crate::{FRAME_BUFFER, FRAME_BUFFER_INFO, TEXT_BUFFER, TEXT_BUFFER_INFO};
 
 const FONT_TEXT: &[u8; 4259456] = include_bytes!("graphic/resources/PlemolJPConsoleNF-Text.ttf");
 const FONT_BOLD: &[u8; 4257220] = include_bytes!("graphic/resources/PlemolJPConsoleNF-Bold.ttf");
-const FONT_SCALE: f32 = 24.0;
 
 /// 描画モジュールの初期化
 pub(crate) fn init(frame_buffer: &'static mut FrameBuffer) {
@@ -30,9 +30,15 @@ pub(crate) fn init(frame_buffer: &'static mut FrameBuffer) {
         Box::new(Locked::new(TextBuffer::new(
             font_text,
             font_bold,
-            FONT_SCALE,
-            FRAME_BUFFER.get().unwrap(),
+            24.0,
             FRAME_BUFFER_INFO.get().unwrap(),
         )))
+    });
+
+    TEXT_BUFFER_INFO.get_or_init(|| {
+        let info = FRAME_BUFFER_INFO.get().unwrap();
+        let scale = TEXT_BUFFER.get().unwrap().lock().scale;
+
+        Box::new(TextBufferInfo::new(info.stride, info.height, scale))
     });
 }
