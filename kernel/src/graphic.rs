@@ -1,6 +1,5 @@
 //! グラフィック関連の機能を定義するモジュール
 
-pub(crate) mod color;
 pub(crate) mod console;
 pub(crate) mod text_buffer;
 
@@ -13,6 +12,7 @@ use crate::{graphic::text_buffer::TextBuffer, FRAME_BUFFER, FRAME_BUFFER_INFO, T
 
 const FONT_TEXT: &[u8; 4259456] = include_bytes!("graphic/resources/PlemolJPConsoleNF-Text.ttf");
 const FONT_BOLD: &[u8; 4257220] = include_bytes!("graphic/resources/PlemolJPConsoleNF-Bold.ttf");
+const FONT_SCALE: f32 = 24.0;
 
 /// 描画モジュールの初期化
 pub(crate) fn init(frame_buffer: &'static mut FrameBuffer) {
@@ -30,7 +30,7 @@ pub(crate) fn init(frame_buffer: &'static mut FrameBuffer) {
         Box::new(Locked::new(TextBuffer::new(
             font_text,
             font_bold,
-            24.0,
+            FONT_SCALE,
             FRAME_BUFFER.get().unwrap(),
             FRAME_BUFFER_INFO.get().unwrap(),
         )))
