@@ -11,7 +11,8 @@ use bootloader_api::info::FrameBufferInfo;
 use common_lib::locked::Locked;
 
 /// カーソルの初期座標。
-const CURSOR_DEFAULT_POSITION: (usize, usize) = (0, 0);
+/// 原因は不明だがY値の初期値を1にしないと上から一段目の文字と二段目の文字が重なる
+const CURSOR_DEFAULT_POSITION: (usize, usize) = (0, 1);
 
 pub struct TextBuffer<'a> {
     font_text: FontRef<'a>,
