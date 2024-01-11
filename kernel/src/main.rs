@@ -14,11 +14,8 @@ mod memory;
 use amd64_lib::{interrupt::halt, serial_println};
 use bootloader_api::{config::Mapping, info::FrameBufferInfo, BootloaderConfig};
 use common_lib::locked::Locked;
-use core::{
-    fmt::{self, Write},
-    panic::PanicInfo,
-};
-use graphic::text_buffer::TextBuffer;
+use core::panic::PanicInfo;
+use graphic::text_buffer::{TextBuffer, TextBufferInfo};
 use once_cell::race::OnceBox;
 
 // 起動の前準備
@@ -35,6 +32,7 @@ pub static BOOTLOADER_CONFIG: BootloaderConfig = {
 
 // スタティック変数の初期化
 static TEXT_BUFFER: OnceBox<Locked<TextBuffer>> = OnceBox::new();
+static TEXT_BUFFER_INFO: OnceBox<TextBufferInfo> = OnceBox::new();
 static FRAME_BUFFER: OnceBox<Locked<&'static mut [u8]>> = OnceBox::new();
 static FRAME_BUFFER_INFO: OnceBox<FrameBufferInfo> = OnceBox::new();
 
@@ -58,31 +56,10 @@ fn kernel_main(boot_info: &'static mut bootloader_api::BootInfo) -> ! {
     println!("がめんにもじをかくよ");
     println!("Framebufferテスト now");
     println!("ｸﾞﾗﾌｨｯｸのﾃｽﾄを実施中");
-    // println!("OK");
 
     loop {
         halt();
     }
-}
-
-// 以下、基本的な画面出力をサポートするマクロ等
-
-/// 画面に文字列を描画するマクロ。graphic::init()の処理が終わってから使用すること
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::_print(format_args!($($arg)*)));
-}
-
-/// 画面に文字列を描画し、最後に改行を行うマクロ。graphic::init()の処理が終わってから使用すること
-#[macro_export]
-macro_rules! println {
-    () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
-}
-
-#[doc(hidden)]
-pub fn _print(args: fmt::Arguments) {
-    TEXT_BUFFER.get().unwrap().lock().write_fmt(args).unwrap();
 }
 
 #[panic_handler]

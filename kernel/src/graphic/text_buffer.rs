@@ -1,27 +1,37 @@
-//! 画面にテキストを描画するモジュール
+//! フレームバッファにテキストを描画するモジュール
 //!
 //! I/Oに強く関与しているためか、`bootloader_api`クレートに強く依存しているクレートである。
 //! そのためブートローダを変更するか、あるいは他のフレームバッファを画面描画に利用する場合は大幅に書き直さなければならない
+//! 出力できる文字は [PlemolJP Console Nerds](https://github.com/yuru7/PlemolJP) に収録されたもののうち、
+//! TextとBoldの二種類の太さのうちどれか一つに限る
+//!
+//!
+//! ## LICENSE
+//! Copyright (c) 2021, Yuko OTAWARA. with Reserved Font Name "PlemolJP"
+//!
+//! This Font Software is licensed under the SIL Open Font License, Version 1.1.
+//! This license is copied below, and is also available with a FAQ at:
+//! https://scripts.sil.org/OFL
 
-use core::fmt;
-
-use super::color::Color;
 use ab_glyph::{point, Font, FontRef, OutlinedGlyph};
-use bootloader_api::info::FrameBufferInfo;
-use common_lib::locked::Locked;
+use alloc::vec;
+use alloc::vec::Vec;
+use bootloader_api::info::{FrameBufferInfo, PixelFormat};
 
-/// カーソルの初期座標。
-const CURSOR_DEFAULT_POSITION: (usize, usize) = (0, 0);
+use crate::FRAME_BUFFER;
+
+/// カーソルの初期座標
+pub(super) const CURSOR_DEFAULT_POSITION: (usize, usize) = (0, 1);
 
 pub struct TextBuffer<'a> {
-    font_text: FontRef<'a>,
-    font_bold: FontRef<'a>,
-    scale: f32,
-    frame_buffer: &'a Locked<&'static mut [u8]>,
-    info: &'a FrameBufferInfo,
+    pub(super) font_text: FontRef<'a>,
+    pub(super) font_bold: FontRef<'a>,
+    pub(super) scale: f32,
+    text_buffer: Vec<u8>,
+    pub(super) info: &'a FrameBufferInfo,
 
     /// 左上を(0,0)とした物理座標。cursor.0がx座標で、cursor.1がy座標
-    cursor: (usize, usize),
+    pub(super) cursor: (usize, usize),
 }
 
 impl<'a> TextBuffer<'a> {
@@ -30,7 +40,6 @@ impl<'a> TextBuffer<'a> {
         font_text: FontRef<'a>,
         font_bold: FontRef<'a>,
         scale: f32,
-        frame_buffer: &'a Locked<&'static mut [u8]>,
         info: &'a FrameBufferInfo,
     ) -> Self {
         TextBuffer {
@@ -38,127 +47,43 @@ impl<'a> TextBuffer<'a> {
             font_bold,
             scale,
             info,
-            frame_buffer,
+            text_buffer: Vec::new(),
             cursor: CURSOR_DEFAULT_POSITION,
         }
     }
 
-    /// フレームバッファに文字を一文字出力するメソッド
-    ///
-    /// 出力できる文字は [PlemolJP Console Nerds](https://github.com/yuru7/PlemolJP) に収録されたもののうち、
-    /// TextとBoldの二種類の太さのうちどれか一つに限る
-    ///
-    /// 画面左端にカーソルが達した場合は、`FrameBuffer::new_line(&mut self)`を呼び出して改行を行う
-    ///
-    /// ## LISENCE
-    /// Copyright (c) 2021, Yuko OTAWARA. with Reserved Font Name "PlemolJP"
-    ///
-    /// This Font Software is licensed under the SIL Open Font License, Version 1.1.
-    /// This license is copied below, and is also available with a FAQ at:
-    /// https://scripts.sil.org/OFL
-    pub fn put_char(&mut self, character: char, font_type: FontType, color: Color) {
-        match character {
-            // 制御文字の場合はそれに従った処理を行う
-            '\n' => self.new_line(),
-            '\r' => self.carriage_return(),
-            // 制御文字以外はフレームバッファに文字を描画し、カーソルを進める
-            _ => {
-                let font = match font_type {
-                    FontType::Text => &self.font_text,
-                    FontType::Bold => &self.font_bold,
-                };
-
-                let glyph = self.get_glyph(character, font, self.scale);
-
-                if let Some(g) = &glyph {
-                    self.write_buffer(g, color);
-
-                    self.cursor.0 += match character {
-                        // ASCII文字または半角カタカナの場合はカーソルを横方向に２つ進める
-                        '\u{0}'..='\u{7f}' => 1,
-                        '\u{ff61}'..='\u{ff9f}' => 1,
-                        // それ以外の場合は横方向に１つ進める
-                        _ => 2,
-                    };
-
-                    if self.cursor.0 >= self.width() {
-                        self.new_line();
-                    }
-                }
-            }
-        }
+    #[cold]
+    fn init_textbuffer(&mut self) {
+        self.text_buffer = vec![0; self.info.byte_len];
     }
 
-    /// `FrameBuffer::put_char(&self)`の簡易版メソッド。
-    ///
-    /// **マクロ**`println!()`**を整備したら削除する予定なので、多用しないように**
-    #[inline(always)]
-    pub fn put_char_plain(&mut self, character: char) {
-        self.put_char(character, FontType::Text, Color::new(255, 255, 255))
-    }
-
-    /// 改行を行うメソッド。
-    /// カーソルが先頭以外の場合は行頭復帰も同時に行う
-    ///
-    /// ## TODO
-    /// カーソルが画面下端に達した場合の処理を記述すること
-    #[inline(always)]
-    pub const fn new_line(&mut self) {
-        if self.cursor.0 > 0 {
-            self.carriage_return()
-        }
-        if self.cursor.1 >= self.height() {
-            todo!()
-        } else {
-            self.cursor.1 += 1
-        }
-    }
-
-    /// 行頭復帰を行うメソッド
-    #[inline(always)]
-    pub const fn carriage_return(&mut self) {
-        self.cursor.0 = 0;
-    }
-
-    /// 画面の横幅を基準とした、1行当たりに収まる最大の文字数を表すメソッド
-    #[inline(always)]
-    pub const fn width(&self) -> usize {
-        (self.info.stride as f32 / (self.scale / 2.0)) as usize
-    }
-
-    /// 画面に収まる最大の行数を表すメソッド
-    #[inline(always)]
-    pub const fn height(&self) -> usize {
-        (self.info.height as f32 / self.scale) as usize
-    }
-
-    fn get_glyph(&self, character: char, font: &FontRef, scale: f32) -> Option<OutlinedGlyph> {
+    pub(super) fn get_glyph(&self, character: char, font: &FontRef) -> Option<OutlinedGlyph> {
         // put_char(&mut self)で呼び出した際の文字幅を調節するため、0.9をself.scaleに掛けている
-        let x = self.cursor.0 as f32 * (self.scale * 0.9 / 2.0);
-        let y = self.cursor.1 as f32 * self.scale * 0.9;
+        let m = self.scale * 0.9;
+        let x = self.cursor.0 as f32 * (m / 2.0);
+        let y = self.cursor.1 as f32 * m;
 
         let glyph = font
             .glyph_id(character)
-            .with_scale_and_position(scale, point(x, y));
+            .with_scale_and_position(self.scale, point(x, y));
 
         font.outline_glyph(glyph)
     }
 
-    fn write_buffer(&self, glyph: &OutlinedGlyph, color: Color) {
+    pub(super) fn write_buffer(&mut self, glyph: &OutlinedGlyph, red_green_blue: [u8; 3]) {
+        if self.text_buffer.len() != self.info.byte_len {
+            self.init_textbuffer();
+        }
+
         let min_x = glyph.px_bounds().min.x as u32;
         let min_y = glyph.px_bounds().min.y as u32;
         let stride = self.info.stride as u32;
         let bit_per_pixel = self.info.bytes_per_pixel as u32;
-        let color = color.encode(self.info.pixel_format);
+        let color = color_encode(red_green_blue, self.info.pixel_format);
 
         // 描画
         glyph.draw(move |dx, dy, c| {
-            let color = [
-                color[0] as f32 * c,
-                color[1] as f32 * c,
-                color[2] as f32 * c,
-            ];
-            let color = [color[0] as u8, color[1] as u8, color[2] as u8];
+            let color = color.map(|n| (n as f32 * c) as u8);
             let x = min_x + dx;
             let y = min_y + dy;
 
@@ -171,26 +96,63 @@ impl<'a> TextBuffer<'a> {
                 buf_index..buf_index + 1
             };
 
-            self.frame_buffer.lock()[range].copy_from_slice(&color);
+            // self.frame_buffer.lock()[range].copy_from_slice(&color);
+            self.text_buffer[range].copy_from_slice(&color);
         });
     }
-}
 
-impl<'a> fmt::Write for TextBuffer<'a> {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        for c in s.chars() {
-            self.put_char_plain(c);
-        }
+    #[inline(always)]
+    pub(super) fn merge_buffer(&mut self) {
+        FRAME_BUFFER
+            .get()
+            .unwrap()
+            .lock()
+            .copy_from_slice(&self.text_buffer);
+    }
 
-        Ok(())
+    pub(super) fn clear(&mut self) {
+        FRAME_BUFFER.get().unwrap().lock().fill(0);
     }
 }
 
-/// フォントの種類を定義する
-pub enum FontType {
-    /// 通常
-    Text,
+pub(crate) struct TextBufferInfo {
+    width: usize,
+    height: usize,
+}
 
-    /// 太字
-    Bold,
+impl TextBufferInfo {
+    pub const fn new(stride: usize, height: usize, scale: f32) -> Self {
+        TextBufferInfo {
+            width: stride / (scale / 2.0) as usize,
+            height: height / scale as usize,
+        }
+    }
+
+    /// 画面の横幅を基準とした、1行当たりに収まる最大の文字数を表すメソッド
+    pub const fn width(&self) -> usize {
+        self.width
+    }
+
+    /// 画面に収まる最大の行数を表すメソッド``
+    pub const fn height(&self) -> usize {
+        self.height
+    }
+}
+
+const fn color_encode(red_green_blue: [u8; 3], pixel_format: PixelFormat) -> [u8; 3] {
+    let red = red_green_blue[0];
+    let green = red_green_blue[1];
+    let blue = red_green_blue[2];
+
+    match pixel_format {
+        PixelFormat::Rgb => red_green_blue,
+        PixelFormat::Bgr => [blue, green, red],
+        PixelFormat::U8 => [(red + green + blue) / 3, 0, 0],
+        PixelFormat::Unknown {
+            red_position,
+            green_position,
+            blue_position,
+        } => [red_position, green_position, blue_position],
+        _ => panic!("Unknown pixel format"),
+    }
 }
