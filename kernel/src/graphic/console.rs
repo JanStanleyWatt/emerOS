@@ -4,7 +4,7 @@ use core::fmt::Write;
 
 use common_lib::graphic::console::{Console, FontType};
 
-use crate::{TEXT_BUFFER, TEXT_BUFFER_INFO};
+use crate::{FRAME_BUFFER_INFO, TEXT_BUFFER, TEXT_BUFFER_HEIGHT, TEXT_BUFFER_WIDTH};
 
 use super::text_buffer::{TextBuffer, CURSOR_DEFAULT_POSITION};
 
@@ -21,10 +21,10 @@ impl<'a> Console for TextBuffer<'a> {
                     FontType::Bold => &self.font_bold,
                 };
                 let glyph = self.get_glyph(character, font);
-                let text_info = TEXT_BUFFER_INFO.get().unwrap();
+                let fb_info = FRAME_BUFFER_INFO.get().unwrap();
 
                 if let Some(g) = &glyph {
-                    self.write_buffer(g, r_g_b);
+                    self.write_buffer(g, r_g_b, fb_info);
 
                     self.cursor.0 += match character {
                         // ASCII文字または半角カタカナの場合はカーソルを横方向'に１つ進める
@@ -34,7 +34,8 @@ impl<'a> Console for TextBuffer<'a> {
                         _ => 2,
                     };
 
-                    if self.cursor.0 >= text_info.width() {
+                    let width = TEXT_BUFFER_WIDTH.get().unwrap().get();
+                    if self.cursor.0 >= width {
                         self.new_line();
                     }
                 }
@@ -47,7 +48,8 @@ impl<'a> Console for TextBuffer<'a> {
         if self.cursor.0 > 0 {
             self.carriage_return()
         }
-        if self.cursor.1 >= TEXT_BUFFER_INFO.get().unwrap().height() {
+
+        if self.cursor.1 >= TEXT_BUFFER_HEIGHT.get().unwrap().get() {
             todo!()
         } else {
             self.cursor.1 += 1

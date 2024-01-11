@@ -15,8 +15,8 @@ use amd64_lib::{interrupt::halt, serial_println};
 use bootloader_api::{config::Mapping, info::FrameBufferInfo, BootloaderConfig};
 use common_lib::locked::Locked;
 use core::panic::PanicInfo;
-use graphic::text_buffer::{TextBuffer, TextBufferInfo};
-use once_cell::race::OnceBox;
+use graphic::text_buffer::TextBuffer;
+use once_cell::race::{OnceBox, OnceNonZeroUsize};
 
 // 起動の前準備
 // ブート設定
@@ -32,7 +32,8 @@ pub static BOOTLOADER_CONFIG: BootloaderConfig = {
 
 // スタティック変数の初期化
 static TEXT_BUFFER: OnceBox<Locked<TextBuffer>> = OnceBox::new();
-static TEXT_BUFFER_INFO: OnceBox<TextBufferInfo> = OnceBox::new();
+static TEXT_BUFFER_WIDTH: OnceNonZeroUsize = OnceNonZeroUsize::new();
+static TEXT_BUFFER_HEIGHT: OnceNonZeroUsize = OnceNonZeroUsize::new();
 static FRAME_BUFFER: OnceBox<Locked<&'static mut [u8]>> = OnceBox::new();
 static FRAME_BUFFER_INFO: OnceBox<FrameBufferInfo> = OnceBox::new();
 
